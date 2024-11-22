@@ -1,43 +1,26 @@
-import { exec } from "child_process";
-
-/**
- * Executes a shell command and returns it as a Promise.
- * @param cmd The command to execute.
- * @returns A promise that resolves with the command output.
- */
-function executeCommand(cmd: string): Promise<string> {
-  return new Promise((resolve, reject) => {
-    exec(cmd, (error, stdout, stderr) => {
-      if (error) {
-        reject(`Error: ${stderr}`);
-      } else {
-        resolve(stdout);
-      }
-    });
-  });
-}
+import { $ } from "bun";
 
 /**
  * Lists the files in the specified directory.
  * @param dir The directory to list files from.
  * @returns A promise that resolves with the list of files.
  */
-export function listFiles(dir: string = "."): Promise<string> {
-  return executeCommand(`ls ${dir}`);
+export async function listFiles(dir: string = "."): Promise<string> {
+  return await $`ls ${dir}`.text();
 }
 
 /**
  * Gets the current working directory.
  * @returns A promise that resolves with the current working directory.
  */
-export function getCurrentDirectory(): Promise<string> {
-  return executeCommand("pwd");
+export async function getCurrentDirectory(): Promise<string> {
+  return await $`pwd`.text();
 }
 
 /**
  * Checks the status of a git repository.
  * @returns A promise that resolves with the git status.
  */
-export function gitStatus(): Promise<string> {
-  return executeCommand("git status");
+export async function gitStatus(): Promise<string> {
+  return await $`git status`.text();
 }

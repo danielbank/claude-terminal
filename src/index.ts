@@ -44,7 +44,9 @@ const askQuestion = () => {
           console.log(
             chalk.green(`Tool use detected: ${toolUseMessage?.name}.`)
           );
-          console.log(await callTool(toolUseMessage));
+          if (toolUseMessage) {
+            console.log(await callTool(toolUseMessage));
+          }
 
           askQuestion();
           break;
