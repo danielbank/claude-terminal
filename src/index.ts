@@ -5,8 +5,10 @@ import chalk from "chalk";
 import {
   callTool,
   GetCurrentDirectoryTool,
-  ListFilesTool,
-  GitStatusTool,
+  ListFilesInDirectoryTool,
+  RenameFileOrDirectoryTool,
+  MoveFileOrDirectoryTool,
+  CreateDirectoryTool,
 } from "./tools";
 
 const client = new Anthropic({
@@ -27,7 +29,13 @@ const askQuestion = () => {
         max_tokens: 1024,
         system:
           "You are a Terminal UI Assistant. The user will ask you in plain English to perform a task in the terminal. You will respond with the output of the most appropriate tool call.  If the user indicates a desire to stop executing the program, please respond with a stop_reason of `end_sequence`.",
-        tools: [GetCurrentDirectoryTool, ListFilesTool, GitStatusTool],
+        tools: [
+          GetCurrentDirectoryTool,
+          ListFilesInDirectoryTool,
+          RenameFileOrDirectoryTool,
+          MoveFileOrDirectoryTool,
+          CreateDirectoryTool,
+        ],
         messages: [
           {
             role: "user",
