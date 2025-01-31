@@ -1,4 +1,4 @@
-import { $ } from "bun";
+import { $ } from "dax";
 
 /**
  * Lists the files in the specified directory.
@@ -11,7 +11,10 @@ export async function listFilesInDirectory(
   flags?: string
 ): Promise<string> {
   const flagsArg = flags ? `${flags} ` : "";
-  return await $`ls ${flagsArg}${dir}`.text();
+  const result = await $`ls ${flagsArg}${dir}`.text();
+  return `Listing files in ${dir}${
+    flags ? ` with flags ${flags}` : ""
+  }:\n${result}`;
 }
 
 /**
@@ -21,7 +24,10 @@ export async function listFilesInDirectory(
  */
 export async function getCurrentDirectory(flags?: string): Promise<string> {
   const flagsArg = flags ? `${flags} ` : "";
-  return await $`pwd ${flagsArg}`.text();
+  const result = await $`pwd ${flagsArg}`.text();
+  return `Current directory${
+    flags ? ` (with flags ${flags})` : ""
+  }:\n${result}`;
 }
 
 /**
@@ -36,7 +42,7 @@ export async function renameFileOrDirectory(
   oldName: string,
   newName: string,
   flags?: string
-): Promise<void> {
+): Promise<string> {
   if (newName.includes("/")) {
     throw new Error(
       "New name cannot include path separators - use moveDirectory() for moving directories"
@@ -45,6 +51,9 @@ export async function renameFileOrDirectory(
 
   const flagsArg = flags ? `${flags} ` : "";
   await $`mv ${flagsArg}${oldName} ${newName}`;
+  return `Renamed '${oldName}' to '${newName}'${
+    flags ? ` with flags ${flags}` : ""
+  }`;
 }
 
 /**
@@ -59,7 +68,7 @@ export async function moveFileOrDirectory(
   source: string,
   destination: string,
   flags?: string
-): Promise<void> {
+): Promise<string> {
   if (!source.trim()) {
     throw new Error("Source file or directory path must be provided");
   }
@@ -72,6 +81,9 @@ export async function moveFileOrDirectory(
 
   const flagsArg = flags ? `${flags} ` : "";
   await $`mv ${flagsArg}${source} ${destination}`;
+  return `Moved '${source}' to '${destination}'${
+    flags ? ` with flags ${flags}` : ""
+  }`;
 }
 
 /**
@@ -83,7 +95,58 @@ export async function moveFileOrDirectory(
 export async function createDirectory(
   dir: string,
   flags?: string
-): Promise<void> {
+): Promise<string> {
   const flagsArg = flags ? `${flags} ` : "";
-  await $`mkdir ${flagsArg}${dir}`.text();
+  await $`mkdir ${flagsArg}${dir}`;
+  return `Created directory '${dir}'${flags ? ` with flags ${flags}` : ""}`;
+}
+
+/**
+ * Changes the current working directory.
+ * @param dir The directory to change to.
+ * @returns A promise that resolves when the directory is changed
+ */
+export async function changeDirectory(dir: string): Promise<string> {
+  try {
+    await requestPermission("cwd");
+    Deno.chdir(dir);
+    return `Changed directory to: ${Deno.cwd()}`;
+  } catch (error) {
+    throw new Error(`Failed to change directory: ${error}`);
+  }
+}
+
+/**
+ * Requests necessary permissions for file system operations
+ * @param permission The permission to request ("read" | "write" | "cwd")
+ * @throws Will throw an error if permission is denied
+ */
+export async function requestPermission(
+  permission: "read" | "write" | "cwd"
+): Promise<void> {
+  const status = await Deno.permissions.request({ name: permission });
+  if (status.state !== "granted") {
+    throw new Error(`${permission} permission denied`);
+  }
+}
+
+/**
+ * Checks if a permission is granted
+ * @param permission The permission to check ("read" | "write" | "cwd")
+ * @throws Will throw an error if permission is denied
+ */
+export async function checkPermission(
+  permission: "read" | "write" | "cwd"
+): Promise<void> {
+  const status = await Deno.permissions.query({ name: permission });
+  if (status.state !== "granted") {
+    throw new Error(`${permission} permission denied`);
+  }
+}
+
+/**
+ * Exits the terminal
+ */
+export async function exitTerminal(): Promise<void> {
+  Deno.exit(0);
 }
