@@ -1,4 +1,4 @@
-import { $ } from "dax";
+import { execa } from "execa";
 
 /**
  * Lists the files in the specified directory.
@@ -11,10 +11,10 @@ export async function listFilesInDirectory(
   flags?: string
 ): Promise<string> {
   const flagsArg = flags ? `${flags} ` : "";
-  const result = await $`ls ${flagsArg}${dir}`.text();
+  const { stdout } = await execa("ls", flags ? [flags, dir] : [dir]);
   return `Listing files in ${dir}${
     flags ? ` with flags ${flags}` : ""
-  }:\n${result}`;
+  }:\n${stdout}`;
 }
 
 /**
@@ -24,7 +24,7 @@ export async function listFilesInDirectory(
  */
 export async function getCurrentDirectory(flags?: string): Promise<string> {
   const flagsArg = flags ? `${flags} ` : "";
-  const result = await $`pwd ${flagsArg}`.text();
+  const result = await execa("pwd", flags ? [flags] : []).stdout;
   return `Current directory${
     flags ? ` (with flags ${flags})` : ""
   }:\n${result}`;
@@ -50,7 +50,7 @@ export async function renameFileOrDirectory(
   }
 
   const flagsArg = flags ? `${flags} ` : "";
-  await $`mv ${flagsArg}${oldName} ${newName}`;
+  await execa("mv", [flagsArg + oldName, newName]);
   return `Renamed '${oldName}' to '${newName}'${
     flags ? ` with flags ${flags}` : ""
   }`;
@@ -80,7 +80,7 @@ export async function moveFileOrDirectory(
   }
 
   const flagsArg = flags ? `${flags} ` : "";
-  await $`mv ${flagsArg}${source} ${destination}`;
+  await execa("mv", [flagsArg + source, destination]);
   return `Moved '${source}' to '${destination}'${
     flags ? ` with flags ${flags}` : ""
   }`;
@@ -97,7 +97,7 @@ export async function createDirectory(
   flags?: string
 ): Promise<string> {
   const flagsArg = flags ? `${flags} ` : "";
-  await $`mkdir ${flagsArg}${dir}`;
+  await execa("mkdir", [flagsArg + dir]);
   return `Created directory '${dir}'${flags ? ` with flags ${flags}` : ""}`;
 }
 
@@ -108,45 +108,9 @@ export async function createDirectory(
  */
 export async function changeDirectory(dir: string): Promise<string> {
   try {
-    await requestPermission("cwd");
-    Deno.chdir(dir);
-    return `Changed directory to: ${Deno.cwd()}`;
+    process.chdir(dir);
+    return `Changed directory to: ${process.cwd()}`;
   } catch (error) {
     throw new Error(`Failed to change directory: ${error}`);
   }
-}
-
-/**
- * Requests necessary permissions for file system operations
- * @param permission The permission to request ("read" | "write" | "cwd")
- * @throws Will throw an error if permission is denied
- */
-export async function requestPermission(
-  permission: "read" | "write" | "cwd"
-): Promise<void> {
-  const status = await Deno.permissions.request({ name: permission });
-  if (status.state !== "granted") {
-    throw new Error(`${permission} permission denied`);
-  }
-}
-
-/**
- * Checks if a permission is granted
- * @param permission The permission to check ("read" | "write" | "cwd")
- * @throws Will throw an error if permission is denied
- */
-export async function checkPermission(
-  permission: "read" | "write" | "cwd"
-): Promise<void> {
-  const status = await Deno.permissions.query({ name: permission });
-  if (status.state !== "granted") {
-    throw new Error(`${permission} permission denied`);
-  }
-}
-
-/**
- * Exits the terminal
- */
-export async function exitTerminal(): Promise<void> {
-  Deno.exit(0);
 }

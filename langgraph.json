@@ -1,0 +1,11 @@
+{
+  "name": "terminal-agent",
+  "version": "0.1.0",
+  "description": "A terminal agent",
+  "main": "src/index.ts",
+  "node_version": "20",
+  "dependencies": [],
+  "scripts": {
+    "start": "ts-node src/index.ts"
+  }
+}

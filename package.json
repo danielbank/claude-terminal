@@ -4,6 +4,11 @@
   "description": "Claude Terminal Demo",
   "module": "src/index.ts",
   "type": "module",
+  "scripts": {
+    "start": "node dist/index.js",
+    "build": "tsc",
+    "dev": "tsx src/index.ts"
+  },
   "peerDependencies": {
     "typescript": "^5.0.0"
   },
@@ -14,6 +19,12 @@
     "@langchain/langgraph": "^0.2.41",
     "chalk": "^5.3.0",
     "dotenv": "^16.4.5",
+    "execa": "^9.5.2",
     "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.0.0"
   }
 }

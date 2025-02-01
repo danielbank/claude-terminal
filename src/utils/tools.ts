@@ -1,16 +1,14 @@
 import { tool } from "@langchain/core/tools";
 import { z } from "zod";
+
 import {
   changeDirectory,
   createDirectory,
-  exitTerminal,
   getCurrentDirectory,
   listFilesInDirectory,
   moveFileOrDirectory,
   renameFileOrDirectory,
-  requestPermission,
-  checkPermission,
-} from "./functions.ts";
+} from "./functions";
 
 export const GetCurrentDirectoryTool = tool(
   async ({ flags }: { flags?: string }) => {
@@ -137,43 +135,10 @@ export const ChangeDirectoryTool = tool(
   }
 );
 
-export const RequestPermissionTool = tool(
-  async ({ permission }: { permission: "read" | "write" | "cwd" }) => {
-    return await requestPermission(permission);
-  },
-  {
-    name: "requestPermission",
-    description: "Requests permission to access a resource..",
-    schema: z.object({
-      permission: z
-        .enum(["read", "write", "cwd"])
-        .describe("The permission to request."),
-    }),
-  }
-);
-
-export const CheckPermissionTool = tool(
-  async ({ permission }: { permission: "read" | "write" | "cwd" }) => {
-    return await checkPermission(permission);
-  },
-  {
-    name: "checkPermission",
-    description: "Checks if a permission is granted.",
-    schema: z.object({
-      permission: z
-        .enum(["read", "write", "cwd"])
-        .describe("The permission to check."),
-    }),
-  }
-);
-
-export const ExitTerminalTool = tool(
-  async () => {
-    return await exitTerminal();
-  },
-  {
-    name: "exitTerminal",
-    description: "Exits the terminal..",
-    schema: z.object({}),
-  }
-);
+export const Tools = [
+  GetCurrentDirectoryTool,
+  ListFilesInDirectoryTool,
+  RenameFileOrDirectoryTool,
+  MoveFileOrDirectoryTool,
+  CreateDirectoryTool,
+];
