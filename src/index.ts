@@ -1,38 +1,29 @@
-import readline from "readline";
-import chalk from "chalk";
+import { LiteMCP } from "litemcp";
+import { z } from "zod";
 
-import { app } from "./agent";
+const server = new LiteMCP("demo", "1.0.0");
 
-const rl = readline.createInterface({
-  input: process.stdin,
-  output: process.stdout,
+server.addTool({
+  name: "add",
+  description: "Add two numbers",
+  parameters: z.object({
+    a: z.number(),
+    b: z.number(),
+  }),
+  execute: async (args) => {
+    return args.a + args.b;
+  },
 });
 
-const askQuestion = () => {
-  rl.question(
-    `${chalk.hex("#EEDAB0")("Claude")} ${chalk.hex("CE6347")("❯ ")}`,
-    async (input) => {
-      if (input === "exit" || input === "quit" || input === "q") {
-        rl.close();
-        return;
-      }
+server.addResource({
+  uri: "file:///logs/app.log",
+  name: "Application Logs",
+  mimeType: "text/plain",
+  async load() {
+    return {
+      text: "Example log content",
+    };
+  },
+});
 
-      if (input === "") {
-        askQuestion();
-        return;
-      }
-
-      try {
-        await app.invoke({
-          goal: input,
-        });
-      } catch (error) {
-        console.error(chalk.red("An error occurred: "), error);
-      }
-
-      askQuestion();
-    }
-  );
-};
-
-askQuestion();
+server.start();
