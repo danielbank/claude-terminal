@@ -1,18 +1,7 @@
 import { createRedisClient } from "@/lib/redis.ts";
+import type { Entry, File, Folder } from "@/types.ts";
 
-export type FileType = "f" | "d";
-
-export type Entry<T extends FileType = FileType> = {
-  name: string;
-  path: string;
-  type: T;
-  size: number;
-  modified?: Date;
-  created?: Date;
-};
-
-export type File = Entry<"f">;
-export type Folder = Entry<"d">;
+export const REDIS_KEY_PREFIX = "claude-terminal:";
 
 export async function getEntryInfo(path: string): Promise<Entry> {
   const entryInfo = await Deno.lstat(path);
@@ -58,10 +47,10 @@ export async function loadEntriesInDirectory(
         }
       }
     }
-    await redis.del(dir);
+    await redis.del(`${REDIS_KEY_PREFIX}${dir}`);
     const allEntries = [...folders, ...files];
     for (const entry of allEntries) {
-      await redis.rpush(dir, JSON.stringify(entry));
+      await redis.rpush(`${REDIS_KEY_PREFIX}${dir}`, JSON.stringify(entry));
     }
     return "OK";
   } catch (error) {
@@ -69,13 +58,6 @@ export async function loadEntriesInDirectory(
   }
 }
 
-/**
- * Get a batch of entries from Redis
- * @param dir - The directory to get the entries from
- * @param redis - The Redis client
- * @param batchSize - The number of entries to return
- * @returns The current batch of entries from Redis and the remaining count of entries still in the key
- */
 export async function getEntriesFromRedis(
   dir: string,
   batchSize: number = 100
@@ -84,21 +66,21 @@ export async function getEntriesFromRedis(
   const entries: (File | Folder)[] = [];
 
   try {
-    const keyType = await redis.type(dir);
+    const keyType = await redis.type(`${REDIS_KEY_PREFIX}${dir}`);
     if (keyType === "none") {
       await loadEntriesInDirectory(dir);
     } else if (keyType !== "list") {
-      await redis.del(dir);
+      await redis.del(`${REDIS_KEY_PREFIX}${dir}`);
       await loadEntriesInDirectory(dir);
     }
 
     for (let i = 0; i < batchSize; i++) {
-      const entry = await redis.lpop(dir);
+      const entry = await redis.lpop(`${REDIS_KEY_PREFIX}${dir}`);
       if (!entry) break;
       entries.push(JSON.parse(entry));
     }
 
-    const remainingCount = await redis.llen(dir);
+    const remainingCount = await redis.llen(`${REDIS_KEY_PREFIX}${dir}`);
 
     const files: File[] = entries.filter(
       (entry): entry is File => entry.type === "f"
@@ -110,5 +92,23 @@ export async function getEntriesFromRedis(
     return { files, folders, remainingCount };
   } catch (error) {
     throw new Error(`Failed to get entries from Redis: ${error}`);
+  }
+}
+
+export async function moveEntry(source: string, destination: string) {
+  try {
+    await Deno.rename(source, destination);
+    return "OK";
+  } catch (error) {
+    throw new Error(`Failed to move entry: ${error}`);
+  }
+}
+
+export async function makeDirectory(path: string) {
+  try {
+    await Deno.mkdir(path);
+    return "OK";
+  } catch (error) {
+    throw new Error(`Failed to make directory: ${error}`);
   }
 }

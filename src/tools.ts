@@ -1,7 +1,12 @@
 import { tool } from "@langchain/core/tools";
 import { z } from "zod";
-import { loadEntriesInDirectory, getEntriesFromRedis } from "@/functions.ts";
-import type { Entry } from "@/functions.ts";
+import {
+  loadEntriesInDirectory,
+  getEntriesFromRedis,
+  moveEntry,
+  makeDirectory,
+} from "@/functions.ts";
+import type { Entry } from "@/types.ts";
 
 export const LoadEntriesInDirectoryTool = tool(
   async ({ dir }: { dir: string }) => {
@@ -61,6 +66,35 @@ export const ListAttributeInDirectoryTool = tool(
         .describe(
           "The attribute to list for the files and folders in the directory."
         ),
+    }),
+  }
+);
+
+export const MoveEntryTool = tool(
+  async ({ source, destination }: { source: string; destination: string }) => {
+    const result = await moveEntry(source, destination);
+    return result;
+  },
+  {
+    name: "moveEntry",
+    description: "Moves an entry from one directory to another.",
+    schema: z.object({
+      source: z.string().describe("The source entry to move."),
+      destination: z.string().describe("The destination directory."),
+    }),
+  }
+);
+
+export const MakeDirectoryTool = tool(
+  async ({ path }: { path: string }) => {
+    const result = await makeDirectory(path);
+    return result;
+  },
+  {
+    name: "makeDirectory",
+    description: "Creates a new directory.",
+    schema: z.object({
+      path: z.string().describe("The path to create the directory."),
     }),
   }
 );

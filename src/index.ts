@@ -8,18 +8,24 @@ import { ToolNode } from "@langchain/langgraph/prebuilt";
 import {
   LoadEntriesInDirectoryTool,
   ListAttributeInDirectoryTool,
+  MoveEntryTool,
+  MakeDirectoryTool,
 } from "@/tools.ts";
 import { SYSTEM_PROMPT } from "@/prompts.ts";
 import { StateAnnotation } from "@/state.ts";
-import { CallModelNode, shouldContinue } from "@/nodes.ts";
+import { AgentNode, shouldContinue } from "@/nodes.ts";
 import process from "node:process";
 import { load } from "https://deno.land/std@0.224.0/dotenv/mod.ts";
 
-const tools = [LoadEntriesInDirectoryTool, ListAttributeInDirectoryTool];
-
-const toolNode = new ToolNode(tools);
-
 await load({ export: true });
+
+const tools = [
+  LoadEntriesInDirectoryTool,
+  ListAttributeInDirectoryTool,
+  MoveEntryTool,
+  MakeDirectoryTool,
+];
+const toolNode = new ToolNode(tools);
 
 const model = new ChatAnthropic({
   modelName: "claude-3-5-sonnet-20241022",
@@ -27,8 +33,10 @@ const model = new ChatAnthropic({
   anthropicApiKey: Deno.env.get("ANTHROPIC_API_KEY"),
 }).bindTools(tools);
 
+const agentNode = AgentNode(model);
+
 const workflow = new StateGraph(StateAnnotation)
-  .addNode("agent", CallModelNode(model))
+  .addNode("agent", agentNode)
   .addNode("tools", toolNode)
   .addEdge("__start__", "agent")
   .addConditionalEdges("agent", shouldContinue)
@@ -41,12 +49,22 @@ const app = workflow.compile({ checkpointer });
 const cleanup = () => {
   console.log(chalk.cyanBright("\nGoodbye!"));
   rl.close();
+  Deno.removeSignalListener("SIGINT", handleSignal);
+  Deno.removeSignalListener("SIGTERM", handleSignal);
   Deno.exit(0);
 };
 
-// Handle interrupts
-Deno.addSignalListener("SIGINT", cleanup);
-Deno.addSignalListener("SIGTERM", cleanup);
+const handleSignal = () => {
+  try {
+    cleanup();
+  } catch (error) {
+    console.error("Error during cleanup:", error);
+    Deno.exit(1);
+  }
+};
+
+Deno.addSignalListener("SIGINT", handleSignal);
+Deno.addSignalListener("SIGTERM", handleSignal);
 
 const rl = readline.createInterface({
   input: process.stdin,

@@ -18,7 +18,7 @@ export function shouldContinue(state: typeof StateAnnotation.State) {
   return "__end__";
 }
 
-export const CallModelNode = (
+export const AgentNode = (
   model: Runnable<
     BaseLanguageModelInput,
     AIMessageChunk,
