@@ -1,4 +1,16 @@
 {
+  "name": "@danielbank/claude-terminal",
+  "version": "1.0.0",
+  "author": "Daniel Bank <daniel.p.bank@gmail.com>",
+  "description": "A terminal interface for Claude",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/danielbank/claude-terminal"
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  },
   "tasks": {
     "start": "deno run --allow-read --allow-write --allow-env --allow-net --allow-run src/index.ts",
     "dev": "deno run --watch --allow-read --allow-write --allow-env --allow-net --allow-run src/index.ts",
@@ -6,11 +18,15 @@
   },
   "imports": {
     "@/": "./src/",
-    "@langchain/core/": "npm:/@langchain/core/",
-    "@langchain/anthropic": "npm:/@langchain/anthropic",
-    "@langchain/langgraph": "npm:/@langchain/langgraph",
-    "chalk": "npm:/chalk",
-    "zod": "npm:/zod",
-    "dax": "https://deno.land/x/dax@0.39.2/mod.ts"
+    "@langchain/core": "npm:@langchain/core",
+    "@langchain/anthropic": "npm:@langchain/anthropic",
+    "@langchain/langgraph": "npm:@langchain/langgraph",
+    "@anthropic-ai/sdk": "npm:@anthropic-ai/sdk",
+    "chalk": "npm:chalk",
+    "zod": "npm:zod",
+    "redis": "https://deno.land/x/redis@v0.31.0/mod.ts"
+  },
+  "compilerOptions": {
+    "lib": ["deno.window", "deno.ns"]
   }
 }

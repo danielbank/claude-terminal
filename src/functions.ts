@@ -1,152 +1,114 @@
-import { $ } from "dax";
+import { createRedisClient } from "@/lib/redis.ts";
 
-/**
- * Lists the files in the specified directory.
- * @param dir The directory to list files from.
- * @param flags Optional flags to pass to the ls command (e.g., '-la', '-R')
- * @returns A promise that resolves with the list of files.
- */
-export async function listFilesInDirectory(
-  dir: string = ".",
-  flags?: string
+export type FileType = "f" | "d";
+
+export type Entry<T extends FileType = FileType> = {
+  name: string;
+  path: string;
+  type: T;
+  size: number;
+  modified?: Date;
+  created?: Date;
+};
+
+export type File = Entry<"f">;
+export type Folder = Entry<"d">;
+
+export async function getEntryInfo(path: string): Promise<Entry> {
+  const entryInfo = await Deno.lstat(path);
+  return {
+    name: path.split("/").pop() ?? "",
+    path,
+    type: entryInfo.isFile ? "f" : "d",
+    size: entryInfo.size,
+    modified: entryInfo.mtime ?? undefined,
+    created: entryInfo.birthtime ?? undefined,
+  };
+}
+
+export async function loadEntriesInDirectory(
+  dir: string = "."
 ): Promise<string> {
-  const flagsArg = flags ? `${flags} ` : "";
-  const result = await $`ls ${flagsArg}${dir}`.text();
-  return `Listing files in ${dir}${
-    flags ? ` with flags ${flags}` : ""
-  }:\n${result}`;
-}
-
-/**
- * Gets the current working directory.
- * @param flags Optional flags to pass to the pwd command (e.g., '-L', '-P')
- * @returns A promise that resolves with the current working directory.
- */
-export async function getCurrentDirectory(flags?: string): Promise<string> {
-  const flagsArg = flags ? `${flags} ` : "";
-  const result = await $`pwd ${flagsArg}`.text();
-  return `Current directory${
-    flags ? ` (with flags ${flags})` : ""
-  }:\n${result}`;
-}
-
-/**
- * Renames a file or directory.
- * @param oldName The current directory name
- * @param newName The new directory name
- * @param flags Optional flags to pass to the mv command (e.g., '-f', '-i', '-v')
- * @returns A promise that resolves when the directory is renamed
- * @throws Will throw an error if the operation fails or if attempting to move to a different path
- */
-export async function renameFileOrDirectory(
-  oldName: string,
-  newName: string,
-  flags?: string
-): Promise<string> {
-  if (newName.includes("/")) {
-    throw new Error(
-      "New name cannot include path separators - use moveDirectory() for moving directories"
-    );
-  }
-
-  const flagsArg = flags ? `${flags} ` : "";
-  await $`mv ${flagsArg}${oldName} ${newName}`;
-  return `Renamed '${oldName}' to '${newName}'${
-    flags ? ` with flags ${flags}` : ""
-  }`;
-}
-
-/**
- * Moves a file or directory to a new location.
- * @param source The source file or directory path
- * @param destination The destination path where the file or directory will be moved
- * @param flags Optional flags to pass to the mv command (e.g., '-f', '-i', '-v')
- * @returns A promise that resolves when the file or directory is moved
- * @throws Will throw an error if the operation fails or if the destination file or directory already exists
- */
-export async function moveFileOrDirectory(
-  source: string,
-  destination: string,
-  flags?: string
-): Promise<string> {
-  if (!source.trim()) {
-    throw new Error("Source file or directory path must be provided");
-  }
-
-  if (!destination.trim() || !destination.includes("/")) {
-    throw new Error(
-      "Destination must be a valid path (e.g., 'path/to/destination')"
-    );
-  }
-
-  const flagsArg = flags ? `${flags} ` : "";
-  await $`mv ${flagsArg}${source} ${destination}`;
-  return `Moved '${source}' to '${destination}'${
-    flags ? ` with flags ${flags}` : ""
-  }`;
-}
-
-/**
- * Creates a new directory.
- * @param dir The directory to create.
- * @param flags Optional flags to pass to the mkdir command (e.g., '-p', '-m', '-v')
- * @returns A promise that resolves when the directory is created
- */
-export async function createDirectory(
-  dir: string,
-  flags?: string
-): Promise<string> {
-  const flagsArg = flags ? `${flags} ` : "";
-  await $`mkdir ${flagsArg}${dir}`;
-  return `Created directory '${dir}'${flags ? ` with flags ${flags}` : ""}`;
-}
-
-/**
- * Changes the current working directory.
- * @param dir The directory to change to.
- * @returns A promise that resolves when the directory is changed
- */
-export async function changeDirectory(dir: string): Promise<string> {
+  const redis = await createRedisClient();
+  const files: File[] = [];
+  const folders: Folder[] = [];
   try {
-    await requestPermission("cwd");
-    Deno.chdir(dir);
-    return `Changed directory to: ${Deno.cwd()}`;
+    for await (const item of Deno.readDir(dir)) {
+      const path = `${dir}/${item.name}`;
+      const entryInfo = await getEntryInfo(path);
+      if (!item.isSymlink) {
+        if (item.isFile) {
+          files.push({
+            name: item.name,
+            path,
+            type: "f",
+            size: entryInfo.size,
+            modified: entryInfo.modified,
+            created: entryInfo.created,
+          });
+        } else if (item.isDirectory) {
+          folders.push({
+            name: item.name,
+            path,
+            type: "d",
+            size: entryInfo.size,
+            modified: entryInfo.modified,
+            created: entryInfo.created,
+          });
+        }
+      }
+    }
+    await redis.del(dir);
+    const allEntries = [...folders, ...files];
+    for (const entry of allEntries) {
+      await redis.rpush(dir, JSON.stringify(entry));
+    }
+    return "OK";
   } catch (error) {
-    throw new Error(`Failed to change directory: ${error}`);
+    throw new Error(`Failed to load and store files from ${dir}: ${error}`);
   }
 }
 
 /**
- * Requests necessary permissions for file system operations
- * @param permission The permission to request ("read" | "write" | "cwd")
- * @throws Will throw an error if permission is denied
+ * Get a batch of entries from Redis
+ * @param dir - The directory to get the entries from
+ * @param redis - The Redis client
+ * @param batchSize - The number of entries to return
+ * @returns The current batch of entries from Redis and the remaining count of entries still in the key
  */
-export async function requestPermission(
-  permission: "read" | "write" | "cwd"
-): Promise<void> {
-  const status = await Deno.permissions.request({ name: permission });
-  if (status.state !== "granted") {
-    throw new Error(`${permission} permission denied`);
-  }
-}
+export async function getEntriesFromRedis(
+  dir: string,
+  batchSize: number = 100
+): Promise<{ files: File[]; folders: Folder[]; remainingCount: number }> {
+  const redis = await createRedisClient();
+  const entries: (File | Folder)[] = [];
 
-/**
- * Checks if a permission is granted
- * @param permission The permission to check ("read" | "write" | "cwd")
- * @throws Will throw an error if permission is denied
- */
-export async function checkPermission(
-  permission: "read" | "write" | "cwd"
-): Promise<void> {
-  const status = await Deno.permissions.query({ name: permission });
-  if (status.state !== "granted") {
-    throw new Error(`${permission} permission denied`);
-  }
-}
+  try {
+    const keyType = await redis.type(dir);
+    if (keyType === "none") {
+      await loadEntriesInDirectory(dir);
+    } else if (keyType !== "list") {
+      await redis.del(dir);
+      await loadEntriesInDirectory(dir);
+    }
 
-/**
- * Exits the terminal
- */
-export async function exitTerminal(): Promise<void> {
-  Deno.exit(0);
+    for (let i = 0; i < batchSize; i++) {
+      const entry = await redis.lpop(dir);
+      if (!entry) break;
+      entries.push(JSON.parse(entry));
+    }
+
+    const remainingCount = await redis.llen(dir);
+
+    const files: File[] = entries.filter(
+      (entry): entry is File => entry.type === "f"
+    );
+    const folders: Folder[] = entries.filter(
+      (entry): entry is Folder => entry.type === "d"
+    );
+
+    return { files, folders, remainingCount };
+  } catch (error) {
+    throw new Error(`Failed to get entries from Redis: ${error}`);
+  }
 }
