@@ -7,6 +7,7 @@
     "npm:@langchain/langgraph@*": "0.2.45_@langchain+core@0.3.39__zod@3.24.1",
     "npm:@types/node@*": "22.5.4",
     "npm:chalk@*": "5.4.1",
+    "npm:langsmith@~0.3.7": "0.3.7",
     "npm:zod@*": "3.24.1"
   },
   "npm": {
@@ -373,6 +374,7 @@
       "npm:@langchain/core@*",
       "npm:@langchain/langgraph@*",
       "npm:chalk@*",
+      "npm:langsmith@~0.3.7",
       "npm:zod@*"
     ]
   }

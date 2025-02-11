@@ -23,6 +23,7 @@
     "@langchain/langgraph": "npm:@langchain/langgraph",
     "@anthropic-ai/sdk": "npm:@anthropic-ai/sdk",
     "chalk": "npm:chalk",
+    "langsmith": "npm:langsmith@^0.3.7",
     "zod": "npm:zod",
     "redis": "https://deno.land/x/redis@v0.31.0/mod.ts"
   },

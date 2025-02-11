@@ -1,21 +1,21 @@
-import { HumanMessage, SystemMessage } from "@langchain/core/messages";
+import process from "node:process";
 import readline from "node:readline";
+import { load } from "https://deno.land/std@0.224.0/dotenv/mod.ts";
 import chalk from "chalk";
+import { traceable } from "langsmith/traceable";
+import type { DynamicStructuredTool } from "@langchain/core";
 import { ChatAnthropic } from "@langchain/anthropic";
-import { StateGraph } from "@langchain/langgraph";
-import { MemorySaver } from "@langchain/langgraph";
-import { ToolNode } from "@langchain/langgraph/prebuilt";
+import { HumanMessage, SystemMessage } from "@langchain/core/messages";
+import { StateGraph, MemorySaver } from "@langchain/langgraph";
+import { SYSTEM_PROMPT } from "@/prompts.ts";
+import { AgentNode, ToolNode, shouldContinue } from "@/nodes.ts";
+import { StateAnnotation } from "@/state.ts";
 import {
   LoadEntriesInDirectoryTool,
   ListAttributeInDirectoryTool,
   MoveEntryTool,
   MakeDirectoryTool,
 } from "@/tools.ts";
-import { SYSTEM_PROMPT } from "@/prompts.ts";
-import { StateAnnotation } from "@/state.ts";
-import { AgentNode, shouldContinue } from "@/nodes.ts";
-import process from "node:process";
-import { load } from "https://deno.land/std@0.224.0/dotenv/mod.ts";
 
 await load({ export: true });
 
@@ -25,7 +25,7 @@ const tools = [
   MoveEntryTool,
   MakeDirectoryTool,
 ];
-const toolNode = new ToolNode(tools);
+const toolNode = new ToolNode(tools as DynamicStructuredTool[]);
 
 const model = new ChatAnthropic({
   modelName: "claude-3-5-sonnet-20241022",
@@ -71,60 +71,63 @@ const rl = readline.createInterface({
   output: process.stdout,
 });
 
-const askQuestion = (initialize = false) => {
-  rl.question(
-    `${chalk.hex("#EEDAB0")("Claude")} ${chalk.hex("CE6347")("❯ ")}`,
-    async (input) => {
-      if (input.toLowerCase() === "exit" || input.toLowerCase() === "quit") {
-        cleanup();
-        return;
-      }
-
-      if (input === "") {
-        askQuestion();
-        return;
-      }
-
-      try {
-        const currentState = await checkpointer.get({
-          configurable: { thread_id: "42" },
-        });
-        const existingMessages =
-          (currentState as unknown as typeof StateAnnotation.State)?.messages ||
-          initialize
-            ? [new SystemMessage(SYSTEM_PROMPT)]
-            : [];
-
-        await app.invoke(
-          {
-            messages: [...existingMessages, new HumanMessage(input)],
-          },
-          {
-            configurable: { thread_id: "42" },
-            callbacks: [
-              {
-                handleLLMEnd: (output) => {
-                  console.log(
-                    chalk.hex("#EEDAB0")(output.generations[0][0].text)
-                  );
-                },
-              },
-            ],
-          }
-        );
-      } catch (error) {
-        console.error(chalk.red("An error occurred:"));
-        if (error instanceof Error) {
-          console.error(chalk.red(error.message));
-          console.error(chalk.red(error.stack));
-        } else {
-          console.error(chalk.red(String(error)));
+const askQuestion = traceable(
+  (initialize = false) => {
+    rl.question(
+      `${chalk.hex("#F0B433")("Xaac")} ${chalk.hex("#2F8FCA")("❯ ")}`,
+      async (input) => {
+        if (input.toLowerCase() === "exit" || input.toLowerCase() === "quit") {
+          cleanup();
+          return;
         }
-      }
 
-      askQuestion();
-    }
-  );
-};
+        if (input === "") {
+          askQuestion();
+          return;
+        }
+
+        try {
+          const currentState = await checkpointer.get({
+            configurable: { thread_id: "42" },
+          });
+          const existingMessages =
+            (currentState as unknown as typeof StateAnnotation.State)
+              ?.messages || initialize
+              ? [new SystemMessage(SYSTEM_PROMPT)]
+              : [];
+
+          await app.invoke(
+            {
+              messages: [...existingMessages, new HumanMessage(input)],
+            },
+            {
+              configurable: { thread_id: "42" },
+              callbacks: [
+                {
+                  handleLLMEnd: (output) => {
+                    console.log(
+                      chalk.hex("#2F8FCA")(output.generations[0][0].text)
+                    );
+                  },
+                },
+              ],
+            }
+          );
+        } catch (error) {
+          console.error(chalk.red("An error occurred:"));
+          if (error instanceof Error) {
+            console.error(chalk.red(error.message));
+            console.error(chalk.red(error.stack));
+          } else {
+            console.error(chalk.red(String(error)));
+          }
+        }
+
+        askQuestion();
+      }
+    );
+  },
+  { name: "askQuestion" }
+);
 
 askQuestion(true);

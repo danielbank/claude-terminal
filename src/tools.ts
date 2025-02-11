@@ -80,7 +80,9 @@ export const MoveEntryTool = tool(
     description: "Moves an entry from one directory to another.",
     schema: z.object({
       source: z.string().describe("The source entry to move."),
-      destination: z.string().describe("The destination directory."),
+      destination: z
+        .string()
+        .describe("The destination path (must include the filename)"),
     }),
   }
 );
