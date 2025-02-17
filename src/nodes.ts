@@ -7,11 +7,8 @@ import type { Runnable } from "@langchain/core/runnables";
 export function shouldContinue(state: typeof StateAnnotation.State) {
   const messages = state.messages;
   const lastMessage = messages[messages.length - 1] as AIMessage;
-  const remaining = state.remaining;
-  console.log(`should continue remaining: ${remaining}`);
 
   if (lastMessage.tool_calls?.length) {
-    console.log(lastMessage.tool_calls);
     return "tools";
   }
 
@@ -28,14 +25,8 @@ export const AgentNode = (
   async function (state: typeof StateAnnotation.State) {
     const messages = state.messages;
     const response = await model.invoke(messages);
-    if (typeof response.content === "string") {
-      const newRemaining = parseInt(
-        response.content.match(/Remaining: (\d+)$/)?.[1] ?? "0"
-      );
-      console.log(`newRemaining: ${newRemaining}`);
-      return { messages: [response], remaining: newRemaining };
-    } else {
-      console.log(response.content);
-      return { messages: [response] };
-    }
+    console.log(response.content);
+    return {
+      messages: [response],
+    };
   };

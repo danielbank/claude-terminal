@@ -95,12 +95,20 @@ export async function getEntriesFromRedis(
   }
 }
 
-export async function moveEntry(source: string, destination: string) {
+export async function moveEntries(
+  sourcePaths: string[],
+  destinationFolder: string
+) {
   try {
-    await Deno.rename(source, destination);
+    for (const source of sourcePaths) {
+      await Deno.rename(
+        source,
+        `${destinationFolder}/${source.split("/").pop()}`
+      );
+    }
     return "OK";
   } catch (error) {
-    throw new Error(`Failed to move entry: ${error}`);
+    throw new Error(`Failed to move entries: ${error}`);
   }
 }
 

@@ -8,7 +8,7 @@ import { ToolNode } from "@langchain/langgraph/prebuilt";
 import {
   LoadEntriesInDirectoryTool,
   ListAttributeInDirectoryTool,
-  MoveEntryTool,
+  MoveEntriesTool,
   MakeDirectoryTool,
 } from "@/tools.ts";
 import { SYSTEM_PROMPT } from "@/prompts.ts";
@@ -22,7 +22,7 @@ await load({ export: true });
 const tools = [
   LoadEntriesInDirectoryTool,
   ListAttributeInDirectoryTool,
-  MoveEntryTool,
+  MoveEntriesTool,
   MakeDirectoryTool,
 ];
 const toolNode = new ToolNode(tools);
@@ -100,6 +100,7 @@ const askQuestion = (initialize = false) => {
             messages: [...existingMessages, new HumanMessage(input)],
           },
           {
+            recursionLimit: 1000,
             configurable: { thread_id: "42" },
             callbacks: [
               {

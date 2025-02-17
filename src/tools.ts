@@ -3,7 +3,7 @@ import { z } from "zod";
 import {
   loadEntriesInDirectory,
   getEntriesFromRedis,
-  moveEntry,
+  moveEntries,
   makeDirectory,
 } from "@/functions.ts";
 import type { Entry } from "@/types.ts";
@@ -12,7 +12,6 @@ export const LoadEntriesInDirectoryTool = tool(
   async ({ dir }: { dir: string }) => {
     try {
       const result = await loadEntriesInDirectory(dir);
-      console.log(result);
       return result;
     } catch (error) {
       throw new Error(`Failed to load entries in "${dir}": ${error}`);
@@ -70,17 +69,29 @@ export const ListAttributeInDirectoryTool = tool(
   }
 );
 
-export const MoveEntryTool = tool(
-  async ({ source, destination }: { source: string; destination: string }) => {
-    const result = await moveEntry(source, destination);
+export const MoveEntriesTool = tool(
+  async ({
+    sourcePaths,
+    destinationPath,
+  }: {
+    sourcePaths: string[];
+    destinationPath: string;
+  }) => {
+    const result = await moveEntries(sourcePaths, destinationPath);
     return result;
   },
   {
-    name: "moveEntry",
-    description: "Moves an entry from one directory to another.",
+    name: "moveEntries",
+    description: "Moves entries to a new destination folder.",
     schema: z.object({
-      source: z.string().describe("The source entry to move."),
-      destination: z.string().describe("The destination directory."),
+      sourcePaths: z
+        .array(z.string())
+        .describe("The source absolute paths for the entries to move."),
+      destinationPath: z
+        .string()
+        .describe(
+          "The destination path where the entries will be moved to.  NOTE: The path should not include the entry name."
+        ),
     }),
   }
 );

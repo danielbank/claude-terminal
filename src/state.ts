@@ -5,8 +5,4 @@ export const StateAnnotation = Annotation.Root({
   messages: Annotation<BaseMessage[]>({
     reducer: messagesStateReducer,
   }),
-  remaining: Annotation<number>({
-    reducer: (_, right) => right,
-    default: () => 0,
-  }),
 });
