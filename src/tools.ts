@@ -2,7 +2,7 @@ import { tool } from "@langchain/core/tools";
 import { z } from "zod";
 import {
   loadEntriesInDirectory,
-  getEntriesFromRedis,
+  popEntriesFromDirectory,
   moveEntries,
   makeDirectory,
 } from "@/functions.ts";
@@ -20,7 +20,7 @@ export const LoadEntriesInDirectoryTool = tool(
   {
     name: "loadEntriesInDirectory",
     description:
-      "Loads the files and folders in the specified directory into Redis.  NOTE: Necessary for any operations because the number of files and folders is too large to fit into memory.",
+      "Loads the files and folders in the specified directory into memory.  NOTE: This tool must be called before any operations in a directory because the number of files and folders could be large.",
     schema: z.object({
       dir: z
         .string()
@@ -31,7 +31,9 @@ export const LoadEntriesInDirectoryTool = tool(
 
 export const ListAttributeInDirectoryTool = tool(
   async ({ dir, attribute }: { dir: string; attribute: keyof Entry }) => {
-    const { files, folders, remainingCount } = await getEntriesFromRedis(dir);
+    const { files, folders, remainingCount } = await popEntriesFromDirectory(
+      dir
+    );
     const count = files.length + folders.length;
 
     let result = "";

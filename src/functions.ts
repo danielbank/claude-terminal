@@ -52,13 +52,13 @@ export async function loadEntriesInDirectory(
     for (const entry of allEntries) {
       await redis.rpush(`${REDIS_KEY_PREFIX}${dir}`, JSON.stringify(entry));
     }
-    return "OK";
+    return `Loaded ${dir} into memory (${allEntries.length} entries)`;
   } catch (error) {
     throw new Error(`Failed to load and store files from ${dir}: ${error}`);
   }
 }
 
-export async function getEntriesFromRedis(
+export async function popEntriesFromDirectory(
   dir: string,
   batchSize: number = 100
 ): Promise<{ files: File[]; folders: Folder[]; remainingCount: number }> {
@@ -106,7 +106,7 @@ export async function moveEntries(
         `${destinationFolder}/${source.split("/").pop()}`
       );
     }
-    return "OK";
+    return `Moved ${sourcePaths.length} entries to ${destinationFolder}`;
   } catch (error) {
     throw new Error(`Failed to move entries: ${error}`);
   }
@@ -115,7 +115,7 @@ export async function moveEntries(
 export async function makeDirectory(path: string) {
   try {
     await Deno.mkdir(path);
-    return "OK";
+    return `Created directory ${path}`;
   } catch (error) {
     throw new Error(`Failed to make directory: ${error}`);
   }

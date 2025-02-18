@@ -71,7 +71,9 @@ const rl = readline.createInterface({
   output: process.stdout,
 });
 
-const askQuestion = (initialize = false) => {
+const messages = [new SystemMessage(SYSTEM_PROMPT)];
+
+const askQuestion = () => {
   rl.question(
     `${chalk.hex("#EEDAB0")("Claude")} ${chalk.hex("CE6347")("❯ ")}`,
     async (input) => {
@@ -86,18 +88,9 @@ const askQuestion = (initialize = false) => {
       }
 
       try {
-        const currentState = await checkpointer.get({
-          configurable: { thread_id: "42" },
-        });
-        const existingMessages =
-          (currentState as unknown as typeof StateAnnotation.State)?.messages ||
-          initialize
-            ? [new SystemMessage(SYSTEM_PROMPT)]
-            : [];
-
         await app.invoke(
           {
-            messages: [...existingMessages, new HumanMessage(input)],
+            messages: [...messages, new HumanMessage(input)],
           },
           {
             recursionLimit: 1000,
@@ -128,4 +121,4 @@ const askQuestion = (initialize = false) => {
   );
 };
 
-askQuestion(true);
+askQuestion();
