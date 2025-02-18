@@ -58,6 +58,15 @@ export async function loadEntriesInDirectory(
   }
 }
 
+export async function checkDirectory(dir: string) {
+  const redis = await createRedisClient();
+  const keyType = await redis.type(`${REDIS_KEY_PREFIX}${dir}`);
+  if (keyType === "none") {
+    return await loadEntriesInDirectory(dir);
+  }
+  return `${dir} already loaded into memory`;
+}
+
 export async function popEntriesFromDirectory(
   dir: string,
   batchSize: number = 100
@@ -66,13 +75,7 @@ export async function popEntriesFromDirectory(
   const entries: (File | Folder)[] = [];
 
   try {
-    const keyType = await redis.type(`${REDIS_KEY_PREFIX}${dir}`);
-    if (keyType === "none") {
-      await loadEntriesInDirectory(dir);
-    } else if (keyType !== "list") {
-      await redis.del(`${REDIS_KEY_PREFIX}${dir}`);
-      await loadEntriesInDirectory(dir);
-    }
+    await checkDirectory(dir);
 
     for (let i = 0; i < batchSize; i++) {
       const entry = await redis.lpop(`${REDIS_KEY_PREFIX}${dir}`);

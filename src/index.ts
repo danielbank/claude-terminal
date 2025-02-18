@@ -8,12 +8,13 @@ import { ToolNode } from "@langchain/langgraph/prebuilt";
 import {
   LoadEntriesInDirectoryTool,
   ListAttributeInDirectoryTool,
+  CheckDirectoryTool,
   MoveEntriesTool,
   MakeDirectoryTool,
 } from "@/tools.ts";
 import { SYSTEM_PROMPT } from "@/prompts.ts";
 import { StateAnnotation } from "@/state.ts";
-import { AgentNode, shouldContinue } from "@/nodes.ts";
+import { AgentNode, SummaryNode, shouldContinue } from "@/nodes.ts";
 import process from "node:process";
 import { load } from "https://deno.land/std@0.224.0/dotenv/mod.ts";
 
@@ -22,6 +23,7 @@ await load({ export: true });
 const tools = [
   LoadEntriesInDirectoryTool,
   ListAttributeInDirectoryTool,
+  CheckDirectoryTool,
   MoveEntriesTool,
   MakeDirectoryTool,
 ];
@@ -34,13 +36,15 @@ const model = new ChatAnthropic({
 }).bindTools(tools);
 
 const agentNode = AgentNode(model);
-
+const summaryNode = SummaryNode(model);
 const workflow = new StateGraph(StateAnnotation)
   .addNode("agent", agentNode)
   .addNode("tools", toolNode)
+  .addNode("summary", summaryNode)
   .addEdge("__start__", "agent")
   .addConditionalEdges("agent", shouldContinue)
-  .addEdge("tools", "agent");
+  .addEdge("tools", "agent")
+  .addEdge("summary", "__end__");
 
 const checkpointer = new MemorySaver();
 

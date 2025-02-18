@@ -3,6 +3,7 @@ import { z } from "zod";
 import {
   loadEntriesInDirectory,
   popEntriesFromDirectory,
+  checkDirectory,
   moveEntries,
   makeDirectory,
 } from "@/functions.ts";
@@ -25,6 +26,20 @@ export const LoadEntriesInDirectoryTool = tool(
       dir: z
         .string()
         .describe("The directory to load the files and folders from."),
+    }),
+  }
+);
+
+export const CheckDirectoryTool = tool(
+  async ({ dir }: { dir: string }) => {
+    const result = await checkDirectory(dir);
+    return result;
+  },
+  {
+    name: "checkDirectory",
+    description: "Checks if the directory is loaded into memory.",
+    schema: z.object({
+      dir: z.string().describe("The directory to check."),
     }),
   }
 );
